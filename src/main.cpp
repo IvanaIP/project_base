@@ -97,7 +97,14 @@ ProgramState *programState;
 
 void DrawImGui(ProgramState *programState);
 
+
+//////////////////////////////////////////////////
+//                                              //
+//                     Main                     //
+//                                              //
+//////////////////////////////////////////////////
 int main() {
+
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -132,18 +139,29 @@ int main() {
     if (programState->ImGuiEnabled) {
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     }
+
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO &io = ImGui::GetIO();
     (void) io;
 
 
-
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 330 core");
 
+    //////////////////////////////////////////////////
+    //                                              //
+    //            Inicijalizacija stanja            //
+    //                                              //
+    //////////////////////////////////////////////////
     glEnable(GL_DEPTH_TEST);
 
+
+    //////////////////////////////////////////////////
+    //                                              //
+    //                   Shaderi                    //
+    //                                              //
+    //////////////////////////////////////////////////
     Shader ourShader("resources/shaders/2.model_lighting.vs", "resources/shaders/2.model_lighting.fs");
 
     Model ourModel("resources/objects/backpack/backpack.obj");
@@ -160,16 +178,32 @@ int main() {
     pointLight.quadratic = 0.032f;
 
 
-
+    //////////////////////////////////////////////////
+    //                                              //
+    //             Petlja renderovanja              //
+    //                                              //
+    //////////////////////////////////////////////////
     while (!glfwWindowShouldClose(window)) {
+
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
         processInput(window);
 
+        //////////////////////////////////////////////////
+        //                                              //
+        //                   Ciscenje                   //
+        //                                              //
+        //////////////////////////////////////////////////
         glClearColor(programState->clearColor.r, programState->clearColor.g, programState->clearColor.b, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+
+        //////////////////////////////////////////////////
+        //                                              //
+        //                Crtanje modela                //
+        //                                              //
+        //////////////////////////////////////////////////
         ourShader.use();
         pointLight.position = glm::vec3(4.0 * cos(currentFrame), 4.0f, 4.0 * sin(currentFrame));
         ourShader.setVec3("pointLight.position", pointLight.position);
@@ -196,12 +230,17 @@ int main() {
         if (programState->ImGuiEnabled)
             DrawImGui(programState);
 
-
-
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
+
+
+    //////////////////////////////////////////////////
+    //                                              //
+    //             Oslobadjanje resursa             //
+    //                                              //
+    //////////////////////////////////////////////////
     programState->SaveToFile("resources/program_state.txt");
     delete programState;
     ImGui_ImplOpenGL3_Shutdown();
