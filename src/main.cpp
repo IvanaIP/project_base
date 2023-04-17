@@ -34,6 +34,7 @@ float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
 
 static int isPostProcessingEnabled = 0;
+static int isHDREnabled = 0;
 
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
@@ -60,6 +61,8 @@ struct PointLight {
     float linear;
     float quadratic;
 };
+
+
 
 struct ProgramState {
     glm::vec3 clearColor = glm::vec3(0);
@@ -118,7 +121,7 @@ void DrawImGui(ProgramState *programState);
 //                                              //
 //////////////////////////////////////////////////
 int main() {
-
+    float gamma = 2.2f;
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -193,6 +196,7 @@ int main() {
 
 	framebufferShader.use();
     framebufferShader.setInt("screenTexture", 0);
+    glUniform1f(glGetUniformLocation(framebufferShader.ID, "gamma"), gamma);
     
     villaModel.SetShaderTextureNamePrefix("material.");
     carModel.SetShaderTextureNamePrefix("material.");
@@ -227,7 +231,7 @@ int main() {
 	unsigned int framebufferTexture;
 	glGenTextures(1, &framebufferTexture);
 	glBindTexture(GL_TEXTURE_2D, framebufferTexture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -263,9 +267,16 @@ int main() {
         //                                              //
         //////////////////////////////////////////////////
         if (isPostProcessingEnabled) {
+            if (isHDREnabled) {
+                framebufferShader.use();
+                framebufferShader.setBool("HDR", true);
+            } else {
+                framebufferShader.use();
+                framebufferShader.setBool("HDR", false);
+            }
             glBindFramebuffer(GL_FRAMEBUFFER, FBO);
         }
-        glClearColor(programState->clearColor.r, programState->clearColor.g, programState->clearColor.b, 1.0f);
+        glClearColor(pow(programState->clearColor.r,gamma), pow(programState->clearColor.g,gamma), pow(programState->clearColor.b,gamma), 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
         // pozicija svetla
         pointLight.position = glm::vec3(150.0 * cos(currFrame), 120 + 100.0f * abs(cos(currFrame)), 150* sin(currFrame/10));
@@ -276,7 +287,6 @@ int main() {
         //              Crtanje modela auta               //
         //                                                //
         ////////////////////////////////////////////////////
-
 
         carShader.use();
         carShader.setVec3("pointLight.position", pointLight.position);
@@ -519,12 +529,19 @@ void processInput(GLFWwindow *window) {
         programState->camera.ProcessKeyboard(LEFT, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         programState->camera.ProcessKeyboard(RIGHT, deltaTime);
+
     if (glfwGetKey(window, GLFW_KEY_K) == GLFW_PRESS) {
         isPostProcessingEnabled = 1;
-
     } else {
         isPostProcessingEnabled = 0;
     }
+
+    if (glfwGetKey(window, GLFW_KEY_H) == GLFW_PRESS) {
+        isHDREnabled = 1;
+    } else {
+        isHDREnabled = 0;
+    }
+
 }
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
