@@ -132,7 +132,7 @@ int main() {
         return -1;
     }
 
-    stbi_set_flip_vertically_on_load(true);
+    // stbi_set_flip_vertically_on_load(true);
 
     programState = new ProgramState;
     programState->LoadFromFile("resources/program_state.txt");
@@ -164,7 +164,7 @@ int main() {
     //////////////////////////////////////////////////
     Shader ourShader("resources/shaders/2.model_lighting.vs", "resources/shaders/2.model_lighting.fs");
 
-    Model ourModel("resources/objects/backpack/backpack.obj");
+    Model ourModel("resources/objects/car/car.obj");
     ourModel.SetShaderTextureNamePrefix("material.");
 
     PointLight& pointLight = programState->pointLight;
