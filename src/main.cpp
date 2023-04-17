@@ -33,8 +33,22 @@ float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
 
+static int isPostProcessingEnabled = 0;
+
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
+
+float rectV[] =
+{
+	// Coords    // texCoords
+	 1.0f, -1.0f,  1.0f, 0.0f,
+	-1.0f, -1.0f,  0.0f, 0.0f,
+	-1.0f,  1.0f,  0.0f, 1.0f,
+
+	 1.0f,  1.0f,  1.0f, 1.0f,
+	 1.0f, -1.0f,  1.0f, 0.0f,
+	-1.0f,  1.0f,  0.0f, 1.0f
+};
 
 struct PointLight {
     glm::vec3 position;
@@ -120,6 +134,7 @@ int main() {
         glfwTerminate();
         return -1;
     }
+
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetCursorPosCallback(window, mouse_callback);
@@ -132,8 +147,6 @@ int main() {
         return -1;
     }
 
-
-
     programState = new ProgramState;
     programState->LoadFromFile("resources/program_state.txt");
     if (programState->ImGuiEnabled) {
@@ -144,7 +157,6 @@ int main() {
     ImGui::CreateContext();
     ImGuiIO &io = ImGui::GetIO();
     (void) io;
-
 
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 330 core");
@@ -160,12 +172,12 @@ int main() {
     glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-
     //////////////////////////////////////////////////
     //                                              //
     //                   Shaderi                    //
     //                                              //
     //////////////////////////////////////////////////
+    Shader framebufferShader("resources/shaders/framebuffer.vs", "resources/shaders/framebuffer.fs");
     Shader grassShader("resources/shaders/grass.vs", "resources/shaders/grass.fs");
     Shader carLineShader("resources/shaders/carline.vs", "resources/shaders/carline.fs");
     Shader carShader("resources/shaders/default.vs", "resources/shaders/default.fs");
@@ -176,10 +188,12 @@ int main() {
     Model villaModel("resources/objects/futuristic_app/Futuristic\ Apartment.obj");
     Model carModel("resources/objects/car/car.obj");
     Model clockModel("resources/objects/clockwork/clock.obj");
-    // stbi_set_flip_vertically_on_load(true);
     Model floorModel("resources/objects/floor/scene.gltf");
     Model grassModel("resources/objects/grass/scene.gltf");
 
+	framebufferShader.use();
+    framebufferShader.setInt("screenTexture", 0);
+    
     villaModel.SetShaderTextureNamePrefix("material.");
     carModel.SetShaderTextureNamePrefix("material.");
     clockModel.SetShaderTextureNamePrefix("material.");
@@ -192,6 +206,43 @@ int main() {
     pointLight.constant = 1.0f;
     pointLight.linear = 0.0004f;
     pointLight.quadratic = 0.00038f;
+
+    // FRAMEBUFFER
+    unsigned int rectVAO, rectVBO;
+	glGenVertexArrays(1, &rectVAO);
+	glGenBuffers(1, &rectVBO);
+	glBindVertexArray(rectVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, rectVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(rectV), &rectV, GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+
+
+	unsigned int FBO;
+	glGenFramebuffers(1, &FBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+
+	unsigned int framebufferTexture;
+	glGenTextures(1, &framebufferTexture);
+	glBindTexture(GL_TEXTURE_2D, framebufferTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, framebufferTexture, 0);
+
+	unsigned int RBO;
+	glGenRenderbuffers(1, &RBO);
+	glBindRenderbuffer(GL_RENDERBUFFER, RBO);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, SCR_WIDTH, SCR_HEIGHT);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, RBO);
+
+	auto fboStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	if (fboStatus != GL_FRAMEBUFFER_COMPLETE)
+		std::cout << "Framebuffer error: " << fboStatus << std::endl;
 
 
     //////////////////////////////////////////////////
@@ -211,36 +262,14 @@ int main() {
         //                   Ciscenje                   //
         //                                              //
         //////////////////////////////////////////////////
+        if (isPostProcessingEnabled) {
+            glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+        }
         glClearColor(programState->clearColor.r, programState->clearColor.g, programState->clearColor.b, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
         // pozicija svetla
         pointLight.position = glm::vec3(150.0 * cos(currFrame), 120 + 100.0f * abs(cos(currFrame)), 150* sin(currFrame/10));
 
-        ////////////////////////////////////////////////////
-        //                                                //
-        //              Crtanje modela vile               //
-        //                                                //
-        ////////////////////////////////////////////////////
-        villaShader.use();
-        villaShader.setVec3("pointLight.position", pointLight.position);
-        villaShader.setVec3("pointLight.ambient", pointLight.ambient);
-        villaShader.setVec3("pointLight.diffuse", pointLight.diffuse);
-        villaShader.setVec3("pointLight.specular", pointLight.specular);
-        villaShader.setFloat("pointLight.constant", pointLight.constant);
-        villaShader.setFloat("pointLight.linear", pointLight.linear);
-        villaShader.setFloat("pointLight.quadratic", pointLight.quadratic);
-        villaShader.setVec3("viewPosition", programState->camera.Position);
-        villaShader.setFloat("material.shininess", 32.0f);
-        glm::mat4 villa_projection = glm::perspective(glm::radians(programState->camera.Zoom),
-                                                (float) SCR_WIDTH / (float) SCR_HEIGHT, 0.1f, 100.0f);
-        glm::mat4 villa_view = programState->camera.GetViewMatrix();
-        villaShader.setMat4("projection", villa_projection);
-        villaShader.setMat4("view", villa_view);
-        glm::mat4 villa_model = glm::mat4(1.0f);
-        villa_model = glm::translate(villa_model, programState->backpackPosition + glm::vec3(0, 0, 0));
-        villa_model = glm::scale(villa_model, glm::vec3(programState->backpackScale));
-        villaShader.setMat4("model", villa_model);
-        villaModel.Draw(villaShader);
 
         ////////////////////////////////////////////////////
         //                                                //
@@ -268,8 +297,6 @@ int main() {
         car_model = glm::translate(car_model, programState->backpackPosition + glm::vec3(0, 0, 45));
         car_model = glm::scale(car_model, glm::vec3(programState->backpackScale));
         carShader.setMat4("model", car_model);
-
-
 
         glStencilFunc(GL_ALWAYS, 1, 0xFF);
         glStencilMask(0xFF);
@@ -325,6 +352,7 @@ int main() {
             clockModel.Draw(clockShader);
         }
         glDisable(GL_CULL_FACE);
+
         ////////////////////////////////////////////////////
         //                                                //
         //              Crtanje modela poda               //
@@ -403,6 +431,48 @@ int main() {
 
 
 
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+
+        ////////////////////////////////////////////////////
+        //                                                //
+        //              Crtanje modela vile               //
+        //                                                //
+        ////////////////////////////////////////////////////
+        villaShader.use();
+        villaShader.setVec3("pointLight.position", pointLight.position);
+        villaShader.setVec3("pointLight.ambient", pointLight.ambient);
+        villaShader.setVec3("pointLight.diffuse", pointLight.diffuse);
+        villaShader.setVec3("pointLight.specular", pointLight.specular);
+        villaShader.setFloat("pointLight.constant", pointLight.constant);
+        villaShader.setFloat("pointLight.linear", pointLight.linear);
+        villaShader.setFloat("pointLight.quadratic", pointLight.quadratic);
+        villaShader.setVec3("viewPosition", programState->camera.Position);
+        villaShader.setFloat("material.shininess", 32.0f);
+        glm::mat4 villa_projection = glm::perspective(glm::radians(programState->camera.Zoom),
+                                                (float) SCR_WIDTH / (float) SCR_HEIGHT, 0.1f, 100.0f);
+        glm::mat4 villa_view = programState->camera.GetViewMatrix();
+        villaShader.setMat4("projection", villa_projection);
+        villaShader.setMat4("view", villa_view);
+        glm::mat4 villa_model = glm::mat4(1.0f);
+        villa_model = glm::translate(villa_model, programState->backpackPosition + glm::vec3(0, 0, 0));
+        villa_model = glm::scale(villa_model, glm::vec3(programState->backpackScale));
+        villaShader.setMat4("model", villa_model);
+        villaModel.Draw(villaShader);
+
+        ////////////////////////////////////////////////////
+        //                                                //
+        //               Post - Processing                //
+        //                                                //
+        ////////////////////////////////////////////////////
+
+        if (isPostProcessingEnabled) {
+            framebufferShader.use();
+            glBindVertexArray(rectVAO);
+            glDisable(GL_DEPTH_TEST);
+            glBindTexture(GL_TEXTURE_2D, framebufferTexture);
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+        }
 
 
         ////////////////////////////////////////////////////
@@ -449,6 +519,12 @@ void processInput(GLFWwindow *window) {
         programState->camera.ProcessKeyboard(LEFT, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         programState->camera.ProcessKeyboard(RIGHT, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_K) == GLFW_PRESS) {
+        isPostProcessingEnabled = 1;
+
+    } else {
+        isPostProcessingEnabled = 0;
+    }
 }
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
