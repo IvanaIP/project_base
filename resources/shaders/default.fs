@@ -59,7 +59,7 @@ vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
     return (ambient + diffuse + specular);
 }
 
-float near = 0.01f;
+float near = 0.001f;
 float far = 100.0f;
 
 float linearizeDepth(float depth) {

@@ -155,16 +155,19 @@ int main() {
     //                                              //
     //////////////////////////////////////////////////
     glEnable(GL_DEPTH_TEST);
-
+    glEnable(GL_STENCIL_TEST);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 
     //////////////////////////////////////////////////
     //                                              //
     //                   Shaderi                    //
     //                                              //
     //////////////////////////////////////////////////
+    Shader carLineShader("resources/shaders/carline.vs", "resources/shaders/carline.fs");
     Shader carShader("resources/shaders/default.vs", "resources/shaders/default.fs");
     Shader villaShader("resources/shaders/villa.vs", "resources/shaders/villa.fs");
     Shader clockShader("resources/shaders/clock.vs", "resources/shaders/clock.fs");
+
 
     Model villaModel("resources/objects/futuristic_app/Futuristic\ Apartment.obj");
     Model carModel("resources/objects/car/car.obj");
@@ -202,7 +205,7 @@ int main() {
         //                                              //
         //////////////////////////////////////////////////
         glClearColor(programState->clearColor.r, programState->clearColor.g, programState->clearColor.b, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
         // pozicija svetla
         pointLight.position = glm::vec3(40.0 * cos(currFrame), 50 + 50.0f * cos(currFrame), 40.0 * sin(currFrame));
 
@@ -237,6 +240,8 @@ int main() {
         //              Crtanje modela auta               //
         //                                                //
         ////////////////////////////////////////////////////
+
+
         carShader.use();
         carShader.setVec3("pointLight.position", pointLight.position);
         carShader.setVec3("pointLight.ambient", pointLight.ambient);
@@ -253,10 +258,29 @@ int main() {
         carShader.setMat4("projection", car_projection);
         carShader.setMat4("view", car_view);
         glm::mat4 car_model = glm::mat4(1.0f);
-        car_model = glm::translate(car_model, programState->backpackPosition + glm::vec3(0, 0, 25));
+        car_model = glm::translate(car_model, programState->backpackPosition + glm::vec3(0, 0, 45));
         car_model = glm::scale(car_model, glm::vec3(programState->backpackScale));
         carShader.setMat4("model", car_model);
+
+
+
+        glStencilFunc(GL_ALWAYS, 1, 0xFF);
+        glStencilMask(0xFF);
+
         carModel.Draw(carShader);
+
+        glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+        glStencilMask(0x00);
+        glDisable(GL_DEPTH_TEST);
+        carLineShader.use();
+        carLineShader.setFloat("outlining", 0.029f);
+        carLineShader.setMat4("projection", car_projection);
+        carLineShader.setMat4("view", car_view);
+        carLineShader.setMat4("model", car_model);
+        carModel.Draw(carLineShader);
+        glStencilMask(0xFF);
+        glStencilFunc(GL_ALWAYS, 0, 0xFF);
+        glEnable(GL_DEPTH_TEST);
 
         ////////////////////////////////////////////////////
         //                                                //
