@@ -154,9 +154,12 @@ int main() {
     //            Inicijalizacija stanja            //
     //                                              //
     //////////////////////////////////////////////////
+    glfwSwapInterval(0);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_STENCIL_TEST);
     glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+
+
 
     //////////////////////////////////////////////////
     //                                              //
@@ -207,7 +210,7 @@ int main() {
         glClearColor(programState->clearColor.r, programState->clearColor.g, programState->clearColor.b, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
         // pozicija svetla
-        pointLight.position = glm::vec3(40.0 * cos(currFrame), 50 + 50.0f * cos(currFrame), 40.0 * sin(currFrame));
+        pointLight.position = glm::vec3(20.0 * cos(currFrame), 50 + 50.0f * abs(cos(currFrame)), 20.0 * sin(currFrame));
 
         ////////////////////////////////////////////////////
         //                                                //
@@ -298,6 +301,11 @@ int main() {
         clockShader.setVec3("viewPosition", programState->camera.Position);
         clockShader.setFloat("material.shininess", 32.0f);
 
+
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_FRONT);
+        glFrontFace(GL_CCW);
+        
         double currentFrame = currFrame / 1000;
         for (int i = 1; i < 102; i++) {
             glm::mat4 clock_projection = glm::perspective(glm::radians(programState->camera.Zoom),
@@ -312,6 +320,8 @@ int main() {
             clockShader.setMat4("model", clock_model);
             clockModel.Draw(clockShader);
         }
+
+        glDisable(GL_CULL_FACE);
 
         ////////////////////////////////////////////////////
         //                                                //
