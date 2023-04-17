@@ -132,7 +132,7 @@ int main() {
         return -1;
     }
 
-    // stbi_set_flip_vertically_on_load(true);
+
 
     programState = new ProgramState;
     programState->LoadFromFile("resources/program_state.txt");
@@ -158,7 +158,7 @@ int main() {
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_STENCIL_TEST);
     glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
-
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 
     //////////////////////////////////////////////////
@@ -166,15 +166,19 @@ int main() {
     //                   Shaderi                    //
     //                                              //
     //////////////////////////////////////////////////
+    Shader grassShader("resources/shaders/grass.vs", "resources/shaders/grass.fs");
     Shader carLineShader("resources/shaders/carline.vs", "resources/shaders/carline.fs");
     Shader carShader("resources/shaders/default.vs", "resources/shaders/default.fs");
     Shader villaShader("resources/shaders/villa.vs", "resources/shaders/villa.fs");
     Shader clockShader("resources/shaders/clock.vs", "resources/shaders/clock.fs");
-
+    Shader floorShader("resources/shaders/default.vs", "resources/shaders/default.fs");
 
     Model villaModel("resources/objects/futuristic_app/Futuristic\ Apartment.obj");
     Model carModel("resources/objects/car/car.obj");
     Model clockModel("resources/objects/clockwork/clock.obj");
+    // stbi_set_flip_vertically_on_load(true);
+    Model floorModel("resources/objects/floor/scene.gltf");
+    Model grassModel("resources/objects/grass/scene.gltf");
 
     villaModel.SetShaderTextureNamePrefix("material.");
     carModel.SetShaderTextureNamePrefix("material.");
@@ -184,10 +188,10 @@ int main() {
     pointLight.position = glm::vec3(4.0f, 59.0, 0.0);
     pointLight.ambient = glm::vec3(0.1, 0.1, 0.1);
     pointLight.diffuse = glm::vec3(0.6, 0.6, 0.6);
-    pointLight.specular = glm::vec3(27.0, 77.0, 255.0);
+    pointLight.specular = glm::vec3(55.0, 104.0, 455.0);
     pointLight.constant = 1.0f;
-    pointLight.linear = 0.09f;
-    pointLight.quadratic = 0.031f;
+    pointLight.linear = 0.0004f;
+    pointLight.quadratic = 0.00038f;
 
 
     //////////////////////////////////////////////////
@@ -210,7 +214,7 @@ int main() {
         glClearColor(programState->clearColor.r, programState->clearColor.g, programState->clearColor.b, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
         // pozicija svetla
-        pointLight.position = glm::vec3(20.0 * cos(currFrame), 50 + 50.0f * abs(cos(currFrame)), 20.0 * sin(currFrame));
+        pointLight.position = glm::vec3(150.0 * cos(currFrame), 120 + 100.0f * abs(cos(currFrame)), 150* sin(currFrame/10));
 
         ////////////////////////////////////////////////////
         //                                                //
@@ -320,8 +324,86 @@ int main() {
             clockShader.setMat4("model", clock_model);
             clockModel.Draw(clockShader);
         }
-
         glDisable(GL_CULL_FACE);
+        ////////////////////////////////////////////////////
+        //                                                //
+        //              Crtanje modela poda               //
+        //                                                //
+        ////////////////////////////////////////////////////
+        floorShader.use();
+        floorShader.setVec3("pointLight.position", pointLight.position);
+        floorShader.setVec3("pointLight.ambient", pointLight.ambient);
+        floorShader.setVec3("pointLight.diffuse", pointLight.diffuse);
+        floorShader.setVec3("pointLight.specular", pointLight.specular);
+        floorShader.setFloat("pointLight.constant", pointLight.constant);
+        floorShader.setFloat("pointLight.linear", pointLight.linear);
+        floorShader.setFloat("pointLight.quadratic", pointLight.quadratic);
+        floorShader.setVec3("viewPosition", programState->camera.Position);
+        floorShader.setFloat("material.shininess", 32.0f);
+
+        // glEnable(GL_CULL_FACE);
+        // glCullFace(GL_FRONT);
+        // glFrontFace(GL_CCW);
+        
+
+        glm::mat4 floor_projection = glm::perspective(glm::radians(programState->camera.Zoom),
+                                                (float) SCR_WIDTH / (float) SCR_HEIGHT, 0.1f, 100.0f);
+        glm::mat4 floor_view = programState->camera.GetViewMatrix();
+        floorShader.setMat4("projection", floor_projection);
+        floorShader.setMat4("view", floor_view);
+        glm::mat4 floor_model = glm::mat4(1.0f);
+        floor_model = glm::translate(floor_model, 
+            programState->backpackPosition + glm::vec3(0.0f, -2.0f, 0.0f));
+        floor_model = glm::scale(floor_model, glm::vec3(programState->backpackScale * 5));
+        floorShader.setMat4("model", floor_model);
+        floorModel.Draw(floorShader);
+
+        // glDisable(GL_CULL_FACE);
+
+
+
+
+        ////////////////////////////////////////////////////
+        //                                                //
+        //              Crtanje modela trave              //
+        //                                                //
+        ////////////////////////////////////////////////////
+        grassShader.use();
+        grassShader.setVec3("pointLight.position", pointLight.position);
+        grassShader.setVec3("pointLight.ambient", pointLight.ambient);
+        grassShader.setVec3("pointLight.diffuse", pointLight.diffuse);
+        grassShader.setVec3("pointLight.specular", pointLight.specular);
+        grassShader.setFloat("pointLight.constant", pointLight.constant);
+        grassShader.setFloat("pointLight.linear", pointLight.linear);
+        grassShader.setFloat("pointLight.quadratic", pointLight.quadratic);
+        grassShader.setVec3("viewPosition", programState->camera.Position);
+        grassShader.setFloat("material.shininess", 32.0f);
+
+        // glEnable(GL_CULL_FACE);
+        // glCullFace(GL_FRONT);
+        // glFrontFace(GL_CCW);
+        
+
+        glm::mat4 grass_projection = glm::perspective(glm::radians(programState->camera.Zoom),
+                                                (float) SCR_WIDTH / (float) SCR_HEIGHT, 0.1f, 100.0f);
+        glm::mat4 grass_view = programState->camera.GetViewMatrix();
+        grassShader.setMat4("projection", grass_projection);
+        grassShader.setMat4("view", grass_view);
+        glm::mat4 grass_model = glm::mat4(1.0f);
+        grass_model = glm::translate(grass_model, 
+            programState->backpackPosition + glm::vec3(0.0f, -2.0f, 0.0f));
+        grass_model = glm::scale(grass_model, glm::vec3(programState->backpackScale * 5));
+        grassShader.setMat4("model", grass_model);
+        
+        glEnable(GL_CULL_FACE);
+        glEnable(GL_BLEND);
+        grassModel.Draw(grassShader);
+        glDisable(GL_BLEND);
+        glDisable(GL_CULL_FACE);
+
+
+
+
 
         ////////////////////////////////////////////////////
         //                                                //
