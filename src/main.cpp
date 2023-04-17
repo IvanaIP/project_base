@@ -26,8 +26,8 @@ void processInput(GLFWwindow *window);
 
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods);
 
-const unsigned int SCR_WIDTH = 800;
-const unsigned int SCR_HEIGHT = 600;
+const unsigned int SCR_WIDTH = 1920;
+const unsigned int SCR_HEIGHT = 1080;
 
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
@@ -162,20 +162,26 @@ int main() {
     //                   Shaderi                    //
     //                                              //
     //////////////////////////////////////////////////
-    Shader ourShader("resources/shaders/default.vs", "resources/shaders/default.fs");
+    Shader carShader("resources/shaders/default.vs", "resources/shaders/default.fs");
+    Shader villaShader("resources/shaders/villa.vs", "resources/shaders/villa.fs");
+    Shader clockShader("resources/shaders/clock.vs", "resources/shaders/clock.fs");
 
-    Model ourModel("resources/objects/futuristic_app/Futuristic\ Apartment.obj");
-    ourModel.SetShaderTextureNamePrefix("material.");
+    Model villaModel("resources/objects/futuristic_app/Futuristic\ Apartment.obj");
+    Model carModel("resources/objects/car/car.obj");
+    Model clockModel("resources/objects/clockwork/clock.obj");
+
+    villaModel.SetShaderTextureNamePrefix("material.");
+    carModel.SetShaderTextureNamePrefix("material.");
+    clockModel.SetShaderTextureNamePrefix("material.");
 
     PointLight& pointLight = programState->pointLight;
-    pointLight.position = glm::vec3(4.0f, 4.0, 0.0);
+    pointLight.position = glm::vec3(4.0f, 59.0, 0.0);
     pointLight.ambient = glm::vec3(0.1, 0.1, 0.1);
     pointLight.diffuse = glm::vec3(0.6, 0.6, 0.6);
-    pointLight.specular = glm::vec3(1.0, 1.0, 1.0);
-
+    pointLight.specular = glm::vec3(27.0, 77.0, 255.0);
     pointLight.constant = 1.0f;
     pointLight.linear = 0.09f;
-    pointLight.quadratic = 0.032f;
+    pointLight.quadratic = 0.031f;
 
 
     //////////////////////////////////////////////////
@@ -185,9 +191,9 @@ int main() {
     //////////////////////////////////////////////////
     while (!glfwWindowShouldClose(window)) {
 
-        float currentFrame = glfwGetTime();
-        deltaTime = currentFrame - lastFrame;
-        lastFrame = currentFrame;
+        float currFrame = glfwGetTime();
+        deltaTime = currFrame - lastFrame;
+        lastFrame = currFrame;
         processInput(window);
 
         //////////////////////////////////////////////////
@@ -197,39 +203,105 @@ int main() {
         //////////////////////////////////////////////////
         glClearColor(programState->clearColor.r, programState->clearColor.g, programState->clearColor.b, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        // pozicija svetla
+        pointLight.position = glm::vec3(40.0 * cos(currFrame), 50 + 50.0f * cos(currFrame), 40.0 * sin(currFrame));
 
-
-        //////////////////////////////////////////////////
-        //                                              //
-        //                Crtanje modela                //
-        //                                              //
-        //////////////////////////////////////////////////
-        ourShader.use();
-        pointLight.position = glm::vec3(4.0 * cos(currentFrame), 4.0f, 4.0 * sin(currentFrame));
-        ourShader.setVec3("pointLight.position", pointLight.position);
-        ourShader.setVec3("pointLight.ambient", pointLight.ambient);
-        ourShader.setVec3("pointLight.diffuse", pointLight.diffuse);
-        ourShader.setVec3("pointLight.specular", pointLight.specular);
-        ourShader.setFloat("pointLight.constant", pointLight.constant);
-        ourShader.setFloat("pointLight.linear", pointLight.linear);
-        ourShader.setFloat("pointLight.quadratic", pointLight.quadratic);
-        ourShader.setVec3("viewPosition", programState->camera.Position);
-        ourShader.setFloat("material.shininess", 32.0f);
-        glm::mat4 projection = glm::perspective(glm::radians(programState->camera.Zoom),
+        ////////////////////////////////////////////////////
+        //                                                //
+        //              Crtanje modela vile               //
+        //                                                //
+        ////////////////////////////////////////////////////
+        villaShader.use();
+        villaShader.setVec3("pointLight.position", pointLight.position);
+        villaShader.setVec3("pointLight.ambient", pointLight.ambient);
+        villaShader.setVec3("pointLight.diffuse", pointLight.diffuse);
+        villaShader.setVec3("pointLight.specular", pointLight.specular);
+        villaShader.setFloat("pointLight.constant", pointLight.constant);
+        villaShader.setFloat("pointLight.linear", pointLight.linear);
+        villaShader.setFloat("pointLight.quadratic", pointLight.quadratic);
+        villaShader.setVec3("viewPosition", programState->camera.Position);
+        villaShader.setFloat("material.shininess", 32.0f);
+        glm::mat4 villa_projection = glm::perspective(glm::radians(programState->camera.Zoom),
                                                 (float) SCR_WIDTH / (float) SCR_HEIGHT, 0.1f, 100.0f);
-        glm::mat4 view = programState->camera.GetViewMatrix();
-        ourShader.setMat4("projection", projection);
-        ourShader.setMat4("view", view);
-        glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model,
-                               programState->backpackPosition); // translate it down so it's at the center of the scene
-        model = glm::scale(model, glm::vec3(programState->backpackScale));    // it's a bit too big for our scene, so scale it down
-        ourShader.setMat4("model", model);
-        ourModel.Draw(ourShader);
+        glm::mat4 villa_view = programState->camera.GetViewMatrix();
+        villaShader.setMat4("projection", villa_projection);
+        villaShader.setMat4("view", villa_view);
+        glm::mat4 villa_model = glm::mat4(1.0f);
+        villa_model = glm::translate(villa_model, programState->backpackPosition + glm::vec3(0, 0, 0));
+        villa_model = glm::scale(villa_model, glm::vec3(programState->backpackScale));
+        villaShader.setMat4("model", villa_model);
+        villaModel.Draw(villaShader);
 
+        ////////////////////////////////////////////////////
+        //                                                //
+        //              Crtanje modela auta               //
+        //                                                //
+        ////////////////////////////////////////////////////
+        carShader.use();
+        carShader.setVec3("pointLight.position", pointLight.position);
+        carShader.setVec3("pointLight.ambient", pointLight.ambient);
+        carShader.setVec3("pointLight.diffuse", pointLight.diffuse);
+        carShader.setVec3("pointLight.specular", pointLight.specular);
+        carShader.setFloat("pointLight.constant", pointLight.constant);
+        carShader.setFloat("pointLight.linear", pointLight.linear);
+        carShader.setFloat("pointLight.quadratic", pointLight.quadratic);
+        carShader.setVec3("viewPosition", programState->camera.Position);
+        carShader.setFloat("material.shininess", 32.0f);
+        glm::mat4 car_projection = glm::perspective(glm::radians(programState->camera.Zoom),
+                                                (float) SCR_WIDTH / (float) SCR_HEIGHT, 0.1f, 100.0f);
+        glm::mat4 car_view = programState->camera.GetViewMatrix();
+        carShader.setMat4("projection", car_projection);
+        carShader.setMat4("view", car_view);
+        glm::mat4 car_model = glm::mat4(1.0f);
+        car_model = glm::translate(car_model, programState->backpackPosition + glm::vec3(0, 0, 25));
+        car_model = glm::scale(car_model, glm::vec3(programState->backpackScale));
+        carShader.setMat4("model", car_model);
+        carModel.Draw(carShader);
+
+        ////////////////////////////////////////////////////
+        //                                                //
+        //              Crtanje modela sata               //
+        //                                                //
+        ////////////////////////////////////////////////////
+        clockShader.use();
+        clockShader.setVec3("pointLight.position", pointLight.position);
+        clockShader.setVec3("pointLight.ambient", pointLight.ambient);
+        clockShader.setVec3("pointLight.diffuse", pointLight.diffuse);
+        clockShader.setVec3("pointLight.specular", pointLight.specular);
+        clockShader.setFloat("pointLight.constant", pointLight.constant);
+        clockShader.setFloat("pointLight.linear", pointLight.linear);
+        clockShader.setFloat("pointLight.quadratic", pointLight.quadratic);
+        clockShader.setVec3("viewPosition", programState->camera.Position);
+        clockShader.setFloat("material.shininess", 32.0f);
+
+        double currentFrame = currFrame / 1000;
+        for (int i = 1; i < 102; i++) {
+            glm::mat4 clock_projection = glm::perspective(glm::radians(programState->camera.Zoom),
+                                                    (float) SCR_WIDTH / (float) SCR_HEIGHT, 0.1f, 100.0f);
+            glm::mat4 clock_view = programState->camera.GetViewMatrix();
+            clockShader.setMat4("projection", clock_projection);
+            clockShader.setMat4("view", clock_view);
+            glm::mat4 clock_model = glm::mat4(1.0f);
+            clock_model = glm::translate(clock_model, 
+                programState->backpackPosition + glm::vec3(cos(i * currentFrame) * ((i+1) * currentFrame), 10 + sin(currentFrame * 20) * 2 * cos(currentFrame * 20), 35 * sin(currentFrame * i + 5)));
+            clock_model = glm::scale(clock_model, glm::vec3(programState->backpackScale));
+            clockShader.setMat4("model", clock_model);
+            clockModel.Draw(clockShader);
+        }
+
+        ////////////////////////////////////////////////////
+        //                                                //
+        //                      GUI                       //
+        //                                                //
+        ////////////////////////////////////////////////////
         if (programState->ImGuiEnabled)
             DrawImGui(programState);
 
+        ////////////////////////////////////////////////////
+        //                                                //
+        //                DOUBLE BUFFERING                //
+        //                                                //
+        ////////////////////////////////////////////////////
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
@@ -253,7 +325,6 @@ int main() {
 void processInput(GLFWwindow *window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
-
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         programState->camera.ProcessKeyboard(FORWARD, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)

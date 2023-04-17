@@ -36,23 +36,27 @@ vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
     // specular shading
 
 
-
+    float spec = 0.0f;
 
     vec3 reflectDir = reflect(-lightDir, normal);
     
     vec3 halfwayVec = normalize(viewDir + lightDir);
     
-    float spec = pow(max(dot(normal, halfwayVec), 0.0), material.shininess);
+    if (diff != 0) {
+        spec = pow(max(dot(normal, halfwayVec), 0.0), material.shininess);
+    }
     // attenuation
     float distance = length(light.position - fragPos);
     float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * (distance * distance));
     // combine results
-    if (diff < 0.001) {
-        spec = 0.0;
-    }
+    
+
+    
     vec3 ambient = light.ambient * vec3(texture(material.texture_diffuse1, TexCoords));
     vec3 diffuse = light.diffuse * diff * vec3(texture(material.texture_diffuse1, TexCoords));
     vec3 specular = light.specular * spec * vec3(texture(material.texture_specular1, TexCoords).xxx);
+    
+    
     ambient *= attenuation;
     diffuse *= attenuation;
     specular *= attenuation;
