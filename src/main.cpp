@@ -162,9 +162,9 @@ int main() {
     //                   Shaderi                    //
     //                                              //
     //////////////////////////////////////////////////
-    Shader ourShader("resources/shaders/2.model_lighting.vs", "resources/shaders/2.model_lighting.fs");
+    Shader ourShader("resources/shaders/default.vs", "resources/shaders/default.fs");
 
-    Model ourModel("resources/objects/car/car.obj");
+    Model ourModel("resources/objects/futuristic_app/Futuristic\ Apartment.obj");
     ourModel.SetShaderTextureNamePrefix("material.");
 
     PointLight& pointLight = programState->pointLight;
