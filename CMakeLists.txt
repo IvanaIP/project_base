@@ -3,6 +3,7 @@ set(PROJECT_NAME rg_project)
 project(${PROJECT_NAME})
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 function(watch)
     set_property(
