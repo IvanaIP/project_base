@@ -1,0 +1,6 @@
+steps:
+  - name: Run fortune command
+    run: fortune > fortune.txt
+
+  - name: Run cowsay command
+    run: cat fortune.txt | cowsay | lolcat
