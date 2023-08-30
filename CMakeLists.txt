@@ -1,9 +1,8 @@
 cmake_minimum_required(VERSION 3.11)
 set(PROJECT_NAME rg_project)
-
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
 project(${PROJECT_NAME})
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+
 
 function(watch)
     set_property(
@@ -16,7 +15,7 @@ endfunction()
 set(CMAKE_POLICY_DEFAULT_CMP0012 NEW)
 set(CMAKE_CXX_STANDARD 14)
 
-# list(APPEND CMAKE_CXX_FLAGS "-g -Wall -Wextra -Wno-unused-variable -Wno-unused-parameter -O3")
+list(APPEND CMAKE_CXX_FLAGS "-g -Wall -Wextra -Wno-unused-variable -Wno-unused-parameter --coverage")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules")
 
 file(GLOB SOURCES "src/*.cpp" "src/*.c" src/main.cpp)
@@ -35,7 +34,7 @@ add_library(STB_IMAGE libs/stb_image.cpp)
 set_source_files_properties(libs/stb_image.cpp include/stb_image.h
         PROPERTIES
         COMPILE_FLAGS
-        "-Wno-shift-negative-value -Wno-implicit-fallthrough")
+        "-Wno-shift-negative-value -Wno-implicit-fallthrough --coverage")
 
 set(LIBS glfw glad OpenGL::GL X11 Xrandr Xinerama Xi Xxf86vm Xcursor dl pthread freetype ${ASSIMP_LIBRARIES} STB_IMAGE imgui)
 
@@ -49,7 +48,7 @@ add_executable(${PROJECT_NAME}
         ${SOURCES})
 
 target_link_libraries(${PROJECT_NAME} ${LIBS})
-target_compile_options(${PROJECT_NAME} PRIVATE -g -Wall -Wextra -Wno-unused-variable -Wno-unused-parameter -O3)
+target_compile_options(${PROJECT_NAME} PRIVATE -g -Wall -Wextra -Wno-unused-variable -Wno-unused-parameter --coverage)
 target_compile_definitions(${PROJECT_NAME} PRIVATE ${OPENGL_DEFINITIONS})
 target_link_libraries(${PROJECT_NAME} ${LIBS})
 
@@ -59,4 +58,9 @@ file(GLOB SHADERS "shaders/*.vs"
 foreach(SHADER ${SHADERS})
     watch(${SHADER})
 endforeach()
+
+if(CMAKE_COMPILER_IS_GNUCXX)
+    include(CodeCoverage)
+    SETUP_TARGET_FOR_COVERAGE_LCOV(NAME coverage EXECUTABLE rg_project)
+endif()
 
