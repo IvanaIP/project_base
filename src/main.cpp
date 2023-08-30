@@ -348,7 +348,7 @@ int main() {
         glFrontFace(GL_CCW);
         
         double currentFrame = currFrame / 1000;
-        for (int i = 1; i < 102; i++) {
+        for (int i = 0; i < 101; i++) {
             glm::mat4 clock_projection = glm::perspective(glm::radians(programState->camera.Zoom),
                                                     (float) SCR_WIDTH / (float) SCR_HEIGHT, 0.1f, 100.0f);
             glm::mat4 clock_view = programState->camera.GetViewMatrix();
